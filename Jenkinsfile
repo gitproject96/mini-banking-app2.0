@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   environment {
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')
+    DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
     DOCKER_IMAGE = "mydocker691/banking-app"
     KUBECONFIG_CRED = 'kubeconfig'  // the ID (file credential) added in Jenkins
   }
