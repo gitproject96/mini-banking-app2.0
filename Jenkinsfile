@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         // DockerHub credentials stored in Jenkins
-        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         DOCKER_IMAGE = "mydocker691/banking-app"
 
         // Kubeconfig file stored in Jenkins as Secret File
