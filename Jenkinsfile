@@ -1,64 +1,66 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-    DOCKER_IMAGE = "mydocker691/banking-app"
-    KUBECONFIG_CRED = 'kubeconfig'  // the ID (file credential) added in Jenkins
-  }
+    environment {
+        // DockerHub credentials stored in Jenkins
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')
+        DOCKER_IMAGE = "mydocker691/banking-app"
 
-  stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+        // Kubeconfig file stored in Jenkins as Secret File
+        KUBECONFIG_FILE = credentials('kubeconfig')
     }
 
-    stage('Build Docker Image') {
-      steps {
-        script {
-          // Use BUILD_NUMBER or Git commit short SHA for tag
-          COMMIT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
-          IMAGE_TAG = "${env.BUILD_NUMBER}-${COMMIT}"
-          env.IMAGE_FULL = "${DOCKER_IMAGE}:${IMAGE_TAG}"
-          sh "docker build -t ${env.IMAGE_FULL} ."
+    stages {
+
+        stage('Clone Repository') {
+            steps {
+                git branch: 'main', url: 'https://github.com/gitproject96/mini-banking-app2.0.git', credentialsId: 'github-cred'
+            }
         }
-      }
-    }
 
-    stage('Push to DockerHub') {
-      steps {
-        sh '''
-          echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin
-          docker push ${IMAGE_FULL}
-        '''
-      }
-    }
-
-    stage('Deploy to Kubernetes') {
-      steps {
-        withCredentials([file(credentialsId: "${KUBECONFIG_CRED}", variable: 'KUBECONFIG_FILE')]) {
-          sh '''
-            # create a temp manifest with the image replaced
-            mkdir -p k8s/tmp
-            sed "s|IMAGE_PLACEHOLDER|${IMAGE_FULL}|g" k8s/deployment.yaml > k8s/tmp/deployment.yaml
-            kubectl --kubeconfig=$KUBECONFIG_FILE apply -f k8s/tmp/deployment.yaml
-            kubectl --kubeconfig=$KUBECONFIG_FILE apply -f k8s/service.yaml || true
-            # optionally force a rolling update by setting image
-            kubectl --kubeconfig=$KUBECONFIG_FILE set image deployment/banking-app banking-app=${IMAGE_FULL} --record || true
-          '''
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Use short git commit as tag
+                    COMMIT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+                    IMAGE_TAG = "${BUILD_NUMBER}-${COMMIT}"
+                    sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
+                }
+            }
         }
-      }
-    }
-  }
 
-  post {
-    failure {
-      echo "Build or deployment failed!"
+        stage('Push to DockerHub') {
+            steps {
+                sh """
+                echo ${DOCKERHUB_CREDENTIALS_PSW} | docker login -u ${DOCKERHUB_CREDENTIALS_USR} --password-stdin
+                docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    sh """
+                    mkdir -p k8s/tmp
+                    # Replace placeholder with the pushed Docker image
+                    sed "s|IMAGE_PLACEHOLDER|${DOCKER_IMAGE}:${IMAGE_TAG}|g" k8s/deployment.yaml > k8s/tmp/deployment.yaml
+                    # Apply deployment and service
+                    kubectl --kubeconfig=$KUBECONFIG apply -f k8s/tmp/deployment.yaml
+                    kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml
+                    """
+                }
+            }
+        }
     }
-    success {
-      echo "Pipeline completed successfully. Image: ${env.IMAGE_FULL}"
+
+    post {
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
+        }
     }
-  }
 }
 
