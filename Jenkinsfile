@@ -1,100 +1,73 @@
-from flask import Flask, render_template_string
-import os
+pipeline {
+    agent any
 
-app = Flask(__name__)
+    environment {
+        DOCKERHUB_CREDENTIALS = credentials('dockerhub-cred')
+        KUBECONFIG_FILE = credentials('kubeconfig')
+    }
 
-# Read environment variables injected by Docker/Jenkins
-APP_VERSION = os.getenv("APP_VERSION", "v0.0.0")
+    stages {
 
-# HTML template with version banner
-html = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sachin and Rupali Online Banking</title>
-    <style>
-        body {{ font-family: Arial, sans-serif; margin: 0; background-color: #f2f2f2; color: #333; }}
-        header {{ background-color: #003366; color: #fff; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }}
-        header h1 {{ margin: 0; font-size: 24px; }}
-        nav a {{ color: #fff; text-decoration: none; margin-left: 20px; font-weight: bold; }}
-        nav a:hover {{ text-decoration: underline; }}
-        .version-banner {{
-            text-align:center; margin: 10px auto; padding: 8px; background-color:#0055a5; color:white;
-            font-weight:bold; border-radius: 5px; width: fit-content;
-        }}
-        /* Rest of your CSS remains the same */
-        .login-container {{ max-width: 400px; margin: 50px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-        .login-container h2 {{ text-align: center; margin-bottom: 20px; color: #003366; }}
-        .login-container input[type="text"], .login-container input[type="password"] {{ width: 100%; padding: 12px; margin: 10px 0 20px 0; border: 1px solid #ccc; border-radius: 4px; }}
-        .login-container button {{ width: 100%; padding: 12px; background-color: #003366; color: #fff; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }}
-        .login-container button:hover {{ background-color: #0055a5; }}
-        .services {{ display: flex; justify-content: space-around; flex-wrap: wrap; margin: 40px; }}
-        .service-card {{ background: #fff; padding: 20px; margin: 15px; flex: 1 1 200px; border-radius: 8px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }}
-        .service-card h3 {{ color: #003366; }}
-        footer {{ background-color: #003366; color: #fff; text-align: center; padding: 20px; margin-top: 50px; }}
-    </style>
-</head>
-<body>
+        stage('Checkout SCM') {
+            steps {
+                git(
+                    url: 'https://github.com/gitproject96/mini-banking-app2.0.git',
+                    branch: 'main',
+                    credentialsId: 'github-cred'
+                )
+            }
+        }
 
-<header>
-    <h1>SBI Online Banking</h1>
-    <nav>
-        <a href="#">Home</a>
-        <a href="#">Accounts</a>
-        <a href="#">Loans</a>
-        <a href="#">Contact</a>
-    </nav>
-</header>
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Short Git commit hash
+                    def COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    def IMAGE_TAG = "mydocker691/banking-app:${BUILD_NUMBER}-${COMMIT}"
 
-<div class="version-banner">
-    ✅ Deployed Version: {APP_VERSION}
-</div>
+                    // Build Docker image and pass APP_VERSION
+                    sh """
+                        docker build --build-arg APP_VERSION=${BUILD_NUMBER}-${COMMIT} -t ${IMAGE_TAG} .
+                    """
 
-<div class="login-container">
-    <h2>Login to Your Account</h2>
-    <form>
-        <input type="text" placeholder="Enter Customer ID" required>
-        <input type="password" placeholder="Enter Password" required>
-        <button type="submit">Login</button>
-    </form>
-    <p style="text-align:center; margin-top: 15px;">
-        <a href="#">Forgot Password?</a> | <a href="#">Register</a>
-    </p>
-</div>
+                    // Save tag for later stages
+                    env.IMAGE_TAG = IMAGE_TAG
+                }
+            }
+        }
 
-<section class="services">
-    <div class="service-card">
-        <h3>Accounts</h3>
-        <p>Check your balance, view statements, and manage accounts.</p>
-    </div>
-    <div class="service-card">
-        <h3>Loans</h3>
-        <p>Apply for personal, home, or business loans online.</p>
-    </div>
-    <div class="service-card">
-        <h3>Investments</h3>
-        <p>Manage fixed deposits, mutual funds, and recurring deposits.</p>
-    </div>
-    <div class="service-card">
-        <h3>Customer Support</h3>
-        <p>Reach out to our support team for assistance anytime.</p>
-    </div>
-</section>
+        stage('Push to DockerHub') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', passwordVariable: 'DOCKERHUB_PSW', usernameVariable: 'DOCKERHUB_USER')]) {
+                    sh "echo $DOCKERHUB_PSW | docker login -u $DOCKERHUB_USER --password-stdin"
+                    sh "docker push ${IMAGE_TAG}"
+                }
+            }
+        }
 
-<footer>
-    &copy; 2025 State Bank of India. All rights reserved. | Contact: 1800-11-2211
-</footer>
+        stage('Deploy to Kubernetes') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    // Replace IMAGE_PLACEHOLDER with actual Docker image tag
+                    sh "sed -i 's|IMAGE_PLACEHOLDER|${IMAGE_TAG}|g' k8s/deployment.yaml"
 
-</body>
-</html>
-"""
+                    // Apply deployment and service
+                    sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.yaml"
+                    sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml"
 
-@app.route("/")
-def home():
-    return render_template_string(html)
+                    // Optional: rolling restart to ensure new pods
+                    sh "kubectl --kubeconfig=$KUBECONFIG rollout restart deployment banking-app"
+                }
+            }
+        }
+    }
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
+    post {
+        success {
+            echo "✅ Pipeline completed successfully! Deployed image: ${IMAGE_TAG}"
+        }
+        failure {
+            echo "❌ Pipeline failed."
+        }
+    }
+}
