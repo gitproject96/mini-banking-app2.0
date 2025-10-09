@@ -115,7 +115,7 @@ html = f"""
 </head>
 <body>
     <header>
-        <h1>HDFC Bank By Sachin and Rupali</h1>
+        <h1>Hiwale Bank By Sachin and Rupali</h1>
         <nav>
             <a href="#">Home</a>
             <a href="#">Accounts</a>
