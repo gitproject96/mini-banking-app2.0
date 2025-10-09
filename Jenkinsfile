@@ -46,20 +46,21 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-            steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    // Replace IMAGE_PLACEHOLDER with actual Docker image tag
-                    sh "sed -i 's|IMAGE_PLACEHOLDER|${IMAGE_TAG}|g' k8s/deployment.yaml"
+    steps {
+        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+            // Replace IMAGE_PLACEHOLDER only in the image line
+            sh "sed -i '/image:/ s|IMAGE_PLACEHOLDER|${IMAGE_TAG}|' k8s/deployment.yaml"
 
-                    // Apply deployment and service
-                    sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.yaml"
-                    sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml"
+            // Apply deployment and service
+            sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.yaml"
+            sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml"
 
-                    // Optional: rolling restart to ensure new pods
-                    sh "kubectl --kubeconfig=$KUBECONFIG rollout restart deployment banking-app"
-                }
-            }
+            // Rolling restart
+            sh "kubectl --kubeconfig=$KUBECONFIG rollout restart deployment banking-app"
         }
+    }
+}
+
     }
 
     post {
