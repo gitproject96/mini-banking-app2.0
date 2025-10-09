@@ -12,67 +12,171 @@ html = f"""
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sachin and Rupali Online Banking</title>
+    <title>HDFC Bank - Home</title>
     <style>
-        body {{ font-family: Arial, sans-serif; margin: 0; background-color: #f2f2f2; color: #333; }}
-        header {{ background-color: #003366; color: #fff; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }}
-        header h1 {{ margin: 0; font-size: 24px; }}
-        nav a {{ color: #fff; text-decoration: none; margin-left: 20px; font-weight: bold; }}
-        nav a:hover {{ text-decoration: underline; }}
-        .version {{ text-align:center; margin-top:10px; font-weight:bold; color:#003366; }}
-        /* rest of your CSS ... */
+        /* Reset some defaults */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        /* Header */
+        header {
+            background-color: #004b87; /* HDFC Blue */
+            color: white;
+            padding: 15px 50px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        header h1 {
+            font-size: 24px;
+        }
+
+        nav a {
+            color: white;
+            text-decoration: none;
+            margin-left: 20px;
+            font-weight: bold;
+        }
+
+        nav a:hover {
+            text-decoration: underline;
+        }
+
+        /* Hero Section */
+        .hero {
+            background-image: url('https://images.unsplash.com/photo-1581092334703-3fc0b10395a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=MnwxfDB8MXxyYW5kb218fHx8fHx8fHwxNjk2NzQ4NzA5&ixlib=rb-4.0.3&q=80&w=1400');
+            background-size: cover;
+            background-position: center;
+            height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+
+        .hero h2 {
+            font-size: 36px;
+            background-color: rgba(0, 0, 0, 0.5);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        /* Services Section */
+        .services {
+            display: flex;
+            justify-content: space-around;
+            padding: 50px 20px;
+            background-color: #ffffff;
+        }
+
+        .service-card {
+            background-color: #f1f1f1;
+            padding: 20px;
+            width: 250px;
+            text-align: center;
+            border-radius: 8px;
+            transition: transform 0.3s;
+        }
+
+        .service-card:hover {
+            transform: scale(1.05);
+        }
+
+        .service-card h3 {
+            color: #004b87;
+            margin-bottom: 10px;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #004b87;
+            color: white;
+            padding: 20px 50px;
+            text-align: center;
+        }
+
+        footer a {
+            color: #f8f9fa;
+            margin: 0 10px;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .services {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .service-card {
+                margin-bottom: 20px;
+            }
+
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            nav {
+                margin-top: 10px;
+            }
+        }
     </style>
 </head>
 <body>
 
-<header>
-    <h1>SBI Online Banking</h1>
-    <nav>
-        <a href="#">Home</a>
-        <a href="#">Accounts</a>
-        <a href="#">Loans</a>
-        <a href="#">Contact</a>
-    </nav>
-</header>
+    <header>
+        <h1>HDFC Bank</h1>
+        <nav>
+            <a href="#">Home</a>
+            <a href="#">Accounts</a>
+            <a href="#">Loans</a>
+            <a href="#">Cards</a>
+            <a href="#">NetBanking</a>
+            <a href="#">Contact</a>
+        </nav>
+    </header>
 
-<div class="login-container">
-    <h2>Login to Your Account</h2>
-    <form>
-        <input type="text" placeholder="Enter Customer ID" required>
-        <input type="password" placeholder="Enter Password" required>
-        <button type="submit">Login</button>
-    </form>
-    <p style="text-align:center; margin-top: 15px;">
-        <a href="#">Forgot Password?</a> | <a href="#">Register</a>
-    </p>
-</div>
+    <section class="hero">
+        <h2>Banking Made Simple and Secure</h2>
+    </section>
 
-<section class="services">
-    <div class="service-card">
-        <h3>Accounts</h3>
-        <p>Check your balance, view statements, and manage accounts.</p>
-    </div>
-    <div class="service-card">
-        <h3>Loans</h3>
-        <p>Apply for personal, home, or business loans online.</p>
-    </div>
-    <div class="service-card">
-        <h3>Investments</h3>
-        <p>Manage fixed deposits, mutual funds, and recurring deposits.</p>
-    </div>
-    <div class="service-card">
-        <h3>Customer Support</h3>
-        <p>Reach out to our support team for assistance anytime.</p>
-    </div>
-</section>
+    <section class="services">
+        <div class="service-card">
+            <h3>Savings Account</h3>
+            <p>Open a savings account with competitive interest rates.</p>
+        </div>
+        <div class="service-card">
+            <h3>Personal Loans</h3>
+            <p>Flexible personal loans to meet your financial needs.</p>
+        </div>
+        <div class="service-card">
+            <h3>Credit Cards</h3>
+            <p>Choose from a range of credit cards with rewards.</p>
+        </div>
+    </section>
 
-<div class="version">
-    ✅ Version: {APP_VERSION}
-</div>
-
-<footer>
-    &copy; 2025 State Bank of India. All rights reserved. | Contact: 1800-11-2211
-</footer>
+    <footer>
+        <p>&copy; 2025 HDFC Bank. All Rights Reserved.</p>
+        <div>
+            <a href="#">Privacy Policy</a> |
+            <a href="#">Terms & Conditions</a> |
+            <a href="#">Help</a>
+        </div>
+    </footer>
 
 </body>
 </html>
