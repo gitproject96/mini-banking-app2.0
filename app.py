@@ -1,8 +1,12 @@
 from flask import Flask, render_template_string
+import os
 
 app = Flask(__name__)
 
-html = """
+# You can pass the version via environment variable
+APP_VERSION = os.getenv("APP_VERSION", "v0.0.0")
+
+html = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,96 +14,13 @@ html = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sachin and Rupali Online Banking</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            background-color: #f2f2f2;
-            color: #333;
-        }
-        /* Header */
-        header {
-            background-color: #003366;
-            color: #fff;
-            padding: 20px 40px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        header h1 {
-            margin: 0;
-            font-size: 24px;
-        }
-        nav a {
-            color: #fff;
-            text-decoration: none;
-            margin-left: 20px;
-            font-weight: bold;
-        }
-        nav a:hover {
-            text-decoration: underline;
-        }
-        /* Login form */
-        .login-container {
-            max-width: 400px;
-            margin: 50px auto;
-            background: #fff;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .login-container h2 {
-            text-align: center;
-            margin-bottom: 20px;
-            color: #003366;
-        }
-        .login-container input[type="text"],
-        .login-container input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0 20px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-        .login-container button {
-            width: 100%;
-            padding: 12px;
-            background-color: #003366;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .login-container button:hover {
-            background-color: #0055a5;
-        }
-        /* Services section */
-        .services {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            margin: 40px;
-        }
-        .service-card {
-            background: #fff;
-            padding: 20px;
-            margin: 15px;
-            flex: 1 1 200px;
-            border-radius: 8px;
-            text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .service-card h3 {
-            color: #003366;
-        }
-        /* Footer */
-        footer {
-            background-color: #003366;
-            color: #fff;
-            text-align: center;
-            padding: 20px;
-            margin-top: 50px;
-        }
+        body {{ font-family: Arial, sans-serif; margin: 0; background-color: #f2f2f2; color: #333; }}
+        header {{ background-color: #003366; color: #fff; padding: 20px 40px; display: flex; align-items: center; justify-content: space-between; }}
+        header h1 {{ margin: 0; font-size: 24px; }}
+        nav a {{ color: #fff; text-decoration: none; margin-left: 20px; font-weight: bold; }}
+        nav a:hover {{ text-decoration: underline; }}
+        .version {{ text-align:center; margin-top:10px; font-weight:bold; color:#003366; }}
+        /* rest of your CSS ... */
     </style>
 </head>
 <body>
@@ -145,13 +66,16 @@ html = """
     </div>
 </section>
 
+<div class="version">
+    ✅ Version: {APP_VERSION}
+</div>
+
 <footer>
     &copy; 2025 State Bank of India. All rights reserved. | Contact: 1800-11-2211
 </footer>
 
 </body>
 </html>
-
 """
 
 @app.route("/")
@@ -160,3 +84,4 @@ def home():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+

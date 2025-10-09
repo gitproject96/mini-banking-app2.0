@@ -13,10 +13,11 @@ spec:
     metadata:
       labels:
         app: banking-app
+        version: IMAGE_PLACEHOLDER  # new label showing deployed version
     spec:
       containers:
       - name: banking-app
-        image: IMAGE_PLACEHOLDER   # Jenkins will replace this with your DockerHub image
+        image: IMAGE_PLACEHOLDER   # Jenkins will replace this dynamically
         ports:
         - containerPort: 5000
         imagePullPolicy: Always
