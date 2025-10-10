@@ -1,13 +1,12 @@
 pipeline {
     agent any
 
-    environment {
+       environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
         KUBECONFIG_FILE = credentials('kubeconfig')
     }
 
     stages {
-
         stage('Checkout SCM') {
             steps {
                 git(
@@ -18,7 +17,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+      stage('Build Docker Image') {
             steps {
                 script {
                     // Short Git commit hash
@@ -36,7 +35,7 @@ pipeline {
             }
         }
 
-        stage('Push to DockerHub') {
+      stage('Push to DockerHub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKERHUB_PSW', usernameVariable: 'DOCKERHUB_USER')]) {
                     sh "echo $DOCKERHUB_PSW | docker login -u $DOCKERHUB_USER --password-stdin"
@@ -46,8 +45,8 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-    steps {
-        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+         steps {
+          withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
             // Replace IMAGE_PLACEHOLDER only in the image line
             sh "sed -i '/image:/ s|IMAGE_PLACEHOLDER|${IMAGE_TAG}|' k8s/deployment.yaml"
 
@@ -57,18 +56,27 @@ pipeline {
 
             // Rolling restart
             sh "kubectl --kubeconfig=$KUBECONFIG rollout restart deployment banking-app"
+                      }
+                }
         }
-    }
-}
 
+        stage('Expose Metrics for Prometheus') {
+            steps {
+                sh """
+                kubectl annotate pod -l app=banking-app prometheus.io/scrape=true -n default --overwrite
+                kubectl annotate pod -l app=banking-app prometheus.io/path=/metrics -n default --overwrite
+                kubectl annotate pod -l app=banking-app prometheus.io/port=5000 -n default --overwrite
+                """
+            }
+        }
     }
 
     post {
         success {
-            echo "✅ Pipeline completed successfully! Deployed image: ${IMAGE_TAG}"
+            echo "✅ Pipeline completed successfully"
         }
         failure {
-            echo "❌ Pipeline failed."
+            echo "❌ Pipeline failed"
         }
     }
 }
