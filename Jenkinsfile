@@ -1,9 +1,8 @@
 pipeline {
     agent any
 
-       environment {
+    environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-creds')
-        KUBECONFIG_FILE = credentials('kubeconfig')
     }
 
     stages {
@@ -17,66 +16,84 @@ pipeline {
             }
         }
 
-      stage('Build Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 script {
-                    // Short Git commit hash
                     def COMMIT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    def IMAGE_TAG = "mydocker691/banking-app:${BUILD_NUMBER}-${COMMIT}"
+                    env.IMAGE_TAG = "mydocker691/banking-app:${BUILD_NUMBER}-${COMMIT}"
 
-                    // Build Docker image and pass APP_VERSION
+                    echo "Building Docker Image: ${env.IMAGE_TAG}"
+
                     sh """
-                        docker build --build-arg APP_VERSION=${BUILD_NUMBER}-${COMMIT} -t ${IMAGE_TAG} .
+                        docker build --build-arg APP_VERSION=${BUILD_NUMBER}-${COMMIT} -t ${env.IMAGE_TAG} .
                     """
-
-                    // Save tag for later stages
-                    env.IMAGE_TAG = IMAGE_TAG
                 }
             }
         }
 
-      stage('Push to DockerHub') {
+        stage('Push to DockerHub') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', passwordVariable: 'DOCKERHUB_PSW', usernameVariable: 'DOCKERHUB_USER')]) {
-                    sh "echo $DOCKERHUB_PSW | docker login -u $DOCKERHUB_USER --password-stdin"
-                    sh "docker push ${IMAGE_TAG}"
+                    sh """
+                        echo $DOCKERHUB_PSW | docker login -u $DOCKERHUB_USER --password-stdin
+                        docker push ${env.IMAGE_TAG}
+                    """
                 }
             }
         }
 
         stage('Deploy to Kubernetes') {
-         steps {
-          withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-            // Replace IMAGE_PLACEHOLDER only in the image line
-            sh "sed -i '/image:/ s|IMAGE_PLACEHOLDER|${IMAGE_TAG}|' k8s/deployment.yaml"
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    script {
+                        echo "Deploying new version to Kubernetes..."
 
-            // Apply deployment and service
-            sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.yaml"
-            sh "kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml"
+                        // Replace image placeholder with new image tag
+                        sh """
+                            sed -i '/image:/ s|IMAGE_PLACEHOLDER|${env.IMAGE_TAG}|' k8s/deployment.yaml
+                        """
 
-            // Rolling restart
-            sh "kubectl --kubeconfig=$KUBECONFIG rollout restart deployment banking-app"
-                      }
+                        // Apply deployment & service
+                        sh """
+                            kubectl --kubeconfig=$KUBECONFIG apply -f k8s/deployment.yaml
+                            kubectl --kubeconfig=$KUBECONFIG apply -f k8s/service.yaml
+                        """
+
+                        // Rollout restart and wait until available
+                        sh """
+                            kubectl --kubeconfig=$KUBECONFIG rollout restart deployment banking-app
+                            kubectl --kubeconfig=$KUBECONFIG rollout status deployment banking-app
+                        """
+
+                        // Show running pods for verification
+                        sh "kubectl --kubeconfig=$KUBECONFIG get pods -o wide"
+                    }
                 }
+            }
         }
 
         stage('Expose Metrics for Prometheus') {
             steps {
-                sh """
-                kubectl annotate pod -l app=banking-app prometheus.io/scrape=true -n default --overwrite
-                kubectl annotate pod -l app=banking-app prometheus.io/path=/metrics -n default --overwrite
-                kubectl annotate pod -l app=banking-app prometheus.io/port=5000 -n default --overwrite
-                """
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    script {
+                        // Annotate deployment for Prometheus scraping
+                        sh """
+                            kubectl --kubeconfig=$KUBECONFIG annotate deployment banking-app prometheus.io/scrape=true --overwrite
+                            kubectl --kubeconfig=$KUBECONFIG annotate deployment banking-app prometheus.io/path=/metrics --overwrite
+                            kubectl --kubeconfig=$KUBECONFIG annotate deployment banking-app prometheus.io/port=5000 --overwrite
+                        """
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Pipeline completed successfully"
+            echo "✅ Pipeline completed successfully — Banking App deployed & monitored!"
         }
         failure {
-            echo "❌ Pipeline failed"
+            echo "❌ Pipeline failed — check logs for details."
         }
     }
 }
