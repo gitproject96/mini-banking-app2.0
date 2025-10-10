@@ -1,7 +1,14 @@
 from flask import Flask, render_template_string
+from prometheus_flask_exporter import PrometheusMetrics
 import os
 
 app = Flask(__name__)
+
+# Initialize Prometheus metrics
+metrics = PrometheusMetrics(app)
+
+# Optional: custom metrics information
+metrics.info('banking_app_info', 'Banking App Metrics', version=os.getenv("APP_VERSION", "v0.0.0"))
 
 # App version from environment variable
 APP_VERSION = os.getenv("APP_VERSION", "v0.0.0")
@@ -148,11 +155,15 @@ html = f"""
   </div>
 </body>
 </html>
+
 """
 
 @app.route("/")
 def home():
     return render_template_string(html)
+
+# Prometheus metrics endpoint is automatically added at /metrics
+# Example: http://localhost:5000/metrics
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
